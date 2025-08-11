@@ -1,0 +1,55 @@
+- name: docker install ref. https://docs.docker.com/engine/install/ubuntu/
+  hosts: all
+  become: yes
+  tasks:
+    - name: Install ca-certificates and curl
+      ansible.builtin.apt:
+        name:
+          - ca-certificates
+          - curl
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Add docker official GPG key and docker repository
+      block:
+        - name: Download docker gpg key
+          ansible.builtin.get_url:
+            url: https://download.docker.com/linux/ubuntu/gpg
+            dest: /etc/apt/keyrings/docker.asc
+            mode: "0644"
+            force: true
+
+        - name: Get machine architecture
+          ansible.builtin.shell:
+            cmd: dpkg --print-architecture
+          register: host_arch
+
+        #      - name: Print machine architecture
+        #        debug:
+        #          msg: "{{ host_arch.stdout }} : {{ ansible_distribution_release }}"
+
+        - name: Add apt source repository
+          ansible.builtin.apt_repository:
+            repo: "deb [arch={{ host_arch.stdout }} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+            state: present
+
+    #      - name: Run apt update
+    #        ansible.builtin.apt:
+    #          update_cache: yes
+
+    - name: Install docker packages
+      ansible.builtin.apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Add user ansible to group docker
+      ansible.builtin.user:
+        name: ansible
+        groups: docker
+        append: yes
