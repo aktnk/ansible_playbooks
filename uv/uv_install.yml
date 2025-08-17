@@ -1,0 +1,44 @@
+---
+- name: uv install
+  hosts: all
+  become: yes
+  become_user: user # Install to user on managed node
+  vars:
+    download_path: /var/tmp/install.sh # Path to the installer script of uv which will be downloaded
+  tasks:
+    - name: Check uv command
+      ansible.builtin.shell: $HOME/.local/bin/uv --version
+      register: uv_check
+      ignore_errors: yes
+      changed_when: false
+
+    - name: Print check result
+      ansible.builtin.debug:
+        msg: "uv check result: {{ uv_check.rc }}"
+
+    - name: Download and Install uv
+      when: uv_check.rc != 0
+      block:
+        - name: Download stand alone installer
+          ansible.builtin.get_url:
+            url: https://astral.sh/uv/install.sh
+            dest: "{{ download_path }}"
+            mode: "0755"
+          register: download_result
+
+        - name: Print download result
+          ansible.builtin.debug:
+            msg: "download result: {{ download_result }}"
+
+        - name: Execute installer
+          ansible.builtin.shell: "sh {{ download_path }}"
+          register: install_result
+
+        - name: Print execution result
+          ansible.builtin.debug:
+            msg: "install result: {{ install_result.stdout }}"
+
+        - name: Remove installer
+          ansible.builtin.file:
+            path: "{{ download_path }}"
+            state: absent
